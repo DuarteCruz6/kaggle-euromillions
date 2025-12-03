@@ -103,10 +103,12 @@ def check_and_append_missing_data():
     
     if df_missing.empty:
         #no missing data
+        print("found no missing data")
         return
     
     #drop the temporary 'date' column before merging
     df_missing = df_missing.drop(columns=['date'])
+    print(f"found {len(df_missing)} new draws")
     
     #append missing data to the existing DataFrame
     #the temporary 'date' column in df_missing.
