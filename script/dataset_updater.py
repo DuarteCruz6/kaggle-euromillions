@@ -76,9 +76,11 @@ def save_to_csv(data: list) -> None:
     """
     filename = UPLOAD_DIR+"/euromillions_website.csv"
     keys = ["date (dd-mm-yyyy)", "num_1", "num_2", "num_3", "num_4", "num_5", "star_1", "star_2", "jackpot (in EUR)"]
+    file_exists = os.path.exists(filename)
     with open(filename, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=keys)
-        writer.writeheader()
+        if not file_exists:
+            writer.writeheader()
         for draw in data:
             writer.writerow(draw) 
         
