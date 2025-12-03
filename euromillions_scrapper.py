@@ -30,14 +30,17 @@ def create_metadata_file():
         
     print(f"Generated metadata file at: {metadata_path}")
 
-def fetch_page() -> str:
+def fetch_page(year: str) -> str:
     """
     Fetches the page of the URL
     
+    Args:
+        year (str): the year to append in the url
+        
     Returns:
         str: content of the response, in unicode
     """
-    resp = requests.get(URL)
+    resp = requests.get(URL+year)
     resp.raise_for_status()
     return resp.text
 
@@ -91,7 +94,7 @@ def save_to_csv(data: list) -> None:
     """
     filename = UPLOAD_DIR+"/euromillions_website.csv"
     keys = ["date (dd-mm-yyyy)", "num_1", "num_2", "num_3", "num_4", "num_5", "star_1", "star_2", "jackpot (in EUR)"]
-    with open(filename, "w", newline="", encoding="utf-8") as f:
+    with open(filename, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=keys)
         writer.writeheader()
         for draw in data:
@@ -142,9 +145,15 @@ if __name__ == "__main__":
     
     #Step 2: Download the latest draws from the EuroMillions official website
     year = str(datetime.datetime.now().year)
-    html = fetch_page(URL+year)
+    html = fetch_page(year)
     data = parse_results(html)
-    save_to_csv(data, UPLOAD_DIR)
+    save_to_csv(data)
+    
+    if datetime.datetime.now().month == 1:
+        #january might be an edge case
+        html = fetch_page(year-1)
+        data = parse_results(html)
+        save_to_csv(data)
     
     #Step 3: Check and append what is missing in the Kaggle dataset
-    check_and_append_missing_data(UPLOAD_DIR)
+    check_and_append_missing_data()
