@@ -3,11 +3,14 @@ from bs4 import BeautifulSoup
 import csv
 import os
 import datetime
+import kaggle
+import pandas as pd
 
 URL = "https://www.euro-millions.com/results-history-"
 
 def fetch_page(url: str) -> str:
-    """Fetches the page of the URL
+    """
+    Fetches the page of the URL
 
     Args:
         url (str): url of the website
@@ -20,7 +23,8 @@ def fetch_page(url: str) -> str:
     return resp.text
 
 def parse_results(html: str) -> list:
-    """Parses the data from the html content
+    """
+    Parses the data from the html content
 
     Args:
         html (str): content of the request
@@ -33,7 +37,7 @@ def parse_results(html: str) -> list:
     
     for draw in soup.select("tr.resultRow"):
         #date scrapping
-        link = draw.select_one("td.date a")  # the <a href="/results/28-11-2025">
+        link = draw.select_one("td.date a")  #the <a href="/results/28-11-2025">
         specific_url = link.get("href")
         date = specific_url.replace("/results/","")
         
@@ -59,31 +63,74 @@ def parse_results(html: str) -> list:
         })
     return results[::-1]
        
-def save_to_csv(data: list, upload_dir: str, exists: bool) -> None:
-    """Generates the .csv file with the new data
+def save_to_csv(data: list, upload_dir: str) -> None:
+    """
+    Generates the .csv file with the data from the website
 
     Args:
         data (list): list of json formatted draws
         upload_dir (str): upload folder name
-        exists (bool): true if it already existed
     """
-    filename = upload_dir+"/euromillions.csv"
+    filename = upload_dir+"/euromillions_website.csv"
     keys = ["date (dd-mm-yyyy)", "num_1", "num_2", "num_3", "num_4", "num_5", "star_1", "star_2", "jackpot (in EUR)"]
-    with open(filename, "a", newline="", encoding="utf-8") as f:
+    with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=keys)
-        if not exists: writer.writeheader()
+        writer.writeheader()
         for draw in data:
             writer.writerow(draw) 
         
-if __name__ == "__main__":
-    year = str(datetime.datetime.now().year)
-    html = fetch_page(URL+year)
+def check_and_append_missing_data(upload_dir:str):
+    """
+    Fetch and append from euromillions_website.csv the missing data of euromillions.csv
     
-    data = parse_results(html)
+    Args:
+        upload_dir (str): upload folder name
+    """
+    existing_file = upload_dir + "/euromillions.csv"
+    website_file = upload_dir + "/euromillions_website.csv"
+    
+    #get the latest date in the existing file
+    df_existing = pd.read_csv(existing_file)
+    df_existing['date'] = pd.to_datetime(df_existing['date (dd-mm-yyyy)'], format='%d-%m-%Y')
+    last_date_existing = df_existing['date'].max()
+ 
+    df_website = pd.read_csv(website_file)    
+    #ensure the date column exists and convert it to datetime
+    df_website['date'] = pd.to_datetime(df_website['date (dd-mm-yyyy)'], format='%d-%m-%Y')
+    
+    #get the missing data (dates strictly after the last existing date)
+    df_missing = df_website[df_website['date'] > last_date_existing].copy()
+    
+    if df_missing.empty:
+        #no missing data
+        return
+    
+    #drop the temporary 'date' column before merging
+    df_missing = df_missing.drop(columns=['date'])
+    
+    #append missing data to the existing DataFrame
+    #the temporary 'date' column in df_missing.
+    df_new = pd.concat([df_existing.drop(columns=['date']), df_missing], ignore_index=True)
 
-    exists = True
+    #save the updated DataFrame back to the original file
+    #ensure you are saving without the 'date' column and without the DataFrame index
+    df_new.to_csv(existing_file, index=False)
+    
+    
+if __name__ == "__main__":  
+    #ensure the 'upload/' directory exists
     upload_dir = "upload"
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
-        exists = False
-    save_to_csv(data, upload_dir, exists)
+          
+    #Step 1: Download the latest dataset and metadata from Kaggle    
+    kaggle.api.dataset_download_files("duartepereiradacruz/euromillions-historical-data", path="upload", unzip=True)
+    
+    #Step 2: Download the latest draws from the EuroMillions official website
+    year = str(datetime.datetime.now().year)
+    html = fetch_page(URL+year)
+    data = parse_results(html)
+    save_to_csv(data, upload_dir)
+    
+    #Step 3: Check and append what is missing in the Kaggle dataset
+    check_and_append_missing_data(upload_dir)
