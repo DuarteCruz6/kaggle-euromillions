@@ -49,4 +49,4 @@ upload/
 This keeps the repository lightweight, as the data itself is version-controlled by Kaggle.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
