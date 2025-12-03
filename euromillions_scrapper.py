@@ -5,20 +5,39 @@ import os
 import datetime
 import kaggle
 import pandas as pd
+import json
 
 URL = "https://www.euro-millions.com/results-history-"
+METADATA_FILENAME = "dataset-metadata.json"
+DATASET_ID = "duartepereiradacruz/euromillions-historical-data"
+UPLOAD_DIR = "upload"
 
-def fetch_page(url: str) -> str:
+def create_metadata_file():
+    """
+    Creates the dataset-metadata.json file required by the Kaggle CLI version command.
+    """
+    metadata_path = os.path.join(UPLOAD_DIR, METADATA_FILENAME)
+    
+    metadata = {
+        "title": "EuroMillions Historical Data",
+        # THIS ID IS CRITICAL for updating the existing dataset
+        "id": DATASET_ID, 
+        "licenses": [{"name": "CC BY-NC-SA 4.0"}]
+    }
+
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=4)
+        
+    print(f"Generated metadata file at: {metadata_path}")
+
+def fetch_page() -> str:
     """
     Fetches the page of the URL
-
-    Args:
-        url (str): url of the website
-
+    
     Returns:
         str: content of the response, in unicode
     """
-    resp = requests.get(url)
+    resp = requests.get(URL)
     resp.raise_for_status()
     return resp.text
 
@@ -63,15 +82,14 @@ def parse_results(html: str) -> list:
         })
     return results[::-1]
        
-def save_to_csv(data: list, upload_dir: str) -> None:
+def save_to_csv(data: list) -> None:
     """
     Generates the .csv file with the data from the website
 
     Args:
         data (list): list of json formatted draws
-        upload_dir (str): upload folder name
     """
-    filename = upload_dir+"/euromillions_website.csv"
+    filename = UPLOAD_DIR+"/euromillions_website.csv"
     keys = ["date (dd-mm-yyyy)", "num_1", "num_2", "num_3", "num_4", "num_5", "star_1", "star_2", "jackpot (in EUR)"]
     with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=keys)
@@ -79,15 +97,12 @@ def save_to_csv(data: list, upload_dir: str) -> None:
         for draw in data:
             writer.writerow(draw) 
         
-def check_and_append_missing_data(upload_dir:str):
+def check_and_append_missing_data():
     """
     Fetch and append from euromillions_website.csv the missing data of euromillions.csv
-    
-    Args:
-        upload_dir (str): upload folder name
     """
-    existing_file = upload_dir + "/euromillions.csv"
-    website_file = upload_dir + "/euromillions_website.csv"
+    existing_file = UPLOAD_DIR + "/euromillions.csv"
+    website_file = UPLOAD_DIR + "/euromillions_website.csv"
     
     #get the latest date in the existing file
     df_existing = pd.read_csv(existing_file)
@@ -119,18 +134,17 @@ def check_and_append_missing_data(upload_dir:str):
     
 if __name__ == "__main__":  
     #ensure the 'upload/' directory exists
-    upload_dir = "upload"
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
           
     #Step 1: Download the latest dataset and metadata from Kaggle    
-    kaggle.api.dataset_download_files("duartepereiradacruz/euromillions-historical-data", path="upload", unzip=True)
+    kaggle.api.dataset_download_files(DATASET_ID, UPLOAD_DIR, unzip=True)
     
     #Step 2: Download the latest draws from the EuroMillions official website
     year = str(datetime.datetime.now().year)
     html = fetch_page(URL+year)
     data = parse_results(html)
-    save_to_csv(data, upload_dir)
+    save_to_csv(data, UPLOAD_DIR)
     
     #Step 3: Check and append what is missing in the Kaggle dataset
-    check_and_append_missing_data(upload_dir)
+    check_and_append_missing_data(UPLOAD_DIR)
