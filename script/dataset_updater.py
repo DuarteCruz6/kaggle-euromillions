@@ -161,5 +161,11 @@ if __name__ == "__main__":
     #Step 3: Check and append what is missing in the Kaggle dataset
     check_and_append_missing_data()
     
+    # Clean-up
+    website_file = UPLOAD_DIR+"/euromillions_website.csv"
+    if os.path.exists(website_file):
+        os.remove(website_file)
+        print(f"Removed temporary file: {website_file}")
+    
     #Step 4: Create the metadata file needed for the Kaggle upload
     create_metadata_file()
