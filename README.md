@@ -13,7 +13,7 @@ This project is designed to maintain the integrity and currency of the euromilli
 This fully automates the data pipeline, moving the dataset from static to dynamically maintained.
 
 ## Workflow Overview
-The core automation is handled by a GitHub Actions workflow that executes the euromillions_scraper.py script.
+The core automation is handled by a GitHub Actions workflow that executes the dataset_updater.py script.
 
 ## Schedule
 The update process runs automatically Twice a Week to ensure timely data ingestion:
