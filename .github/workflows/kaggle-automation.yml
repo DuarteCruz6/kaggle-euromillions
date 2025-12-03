@@ -1,0 +1,39 @@
+name: Fetch and Merge Euromillions Data
+
+on:
+  schedule:
+    - cron: '0 23 * * 2,5'
+  workflow_dispatch:
+
+jobs:
+  update-dataset:
+    runs-on: ubuntu-latest
+
+    env:
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_API_KEY }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install kaggle pandas numpy requests beautifulsoup4
+
+      # --- 1. Run the Python script to prepare updated files and metadata ---
+      - name: Scrape, Merge, and Prepare Data
+        run: python script/dataset_updater.py
+
+      # --- 2. Upload new version to Kaggle ---
+      - name: Upload New Dataset Version to Kaggle
+        run: |
+          # The script uses the 'upload' directory for all its files, including the metadata.json
+          kaggle datasets version -p upload -m "Automated EuroMillions data update, runs on Tuesday and Friday. Check for draws up to $(date +'%Y-%m-%d')"
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_API_KEY }}
