@@ -12,24 +12,6 @@ METADATA_FILENAME = "dataset-metadata.json"
 DATASET_ID = "duartepereiradacruz/euromillions-historical-data"
 UPLOAD_DIR = "upload"
 
-def create_metadata_file():
-    """
-    Creates the dataset-metadata.json file required by the Kaggle CLI version command.
-    """
-    metadata_path = os.path.join(UPLOAD_DIR, METADATA_FILENAME)
-    
-    metadata = {
-        "title": "EuroMillions Historical Data",
-        # THIS ID IS CRITICAL for updating the existing dataset
-        "id": DATASET_ID, 
-        "licenses": [{"name": "CC BY-NC-SA 4.0"}]
-    }
-
-    with open(metadata_path, 'w') as f:
-        json.dump(metadata, f, indent=4)
-        
-    print(f"Generated metadata file at: {metadata_path}")
-
 def fetch_page(year: str) -> str:
     """
     Fetches the page of the URL
@@ -134,6 +116,23 @@ def check_and_append_missing_data():
     #ensure you are saving without the 'date' column and without the DataFrame index
     df_new.to_csv(existing_file, index=False)
     
+def create_metadata_file():
+    """
+    Creates the dataset-metadata.json file required by the Kaggle CLI version command.
+    """
+    metadata_path = os.path.join(UPLOAD_DIR, METADATA_FILENAME)
+    
+    metadata = {
+        "title": "EuroMillions Historical Data",
+        # THIS ID IS CRITICAL for updating the existing dataset
+        "id": DATASET_ID, 
+        "licenses": [{"name": "CC BY-NC-SA 4.0"}]
+    }
+
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=4)
+        
+    print(f"Generated metadata file at: {metadata_path}")
     
 if __name__ == "__main__":  
     #ensure the 'upload/' directory exists
@@ -157,3 +156,6 @@ if __name__ == "__main__":
     
     #Step 3: Check and append what is missing in the Kaggle dataset
     check_and_append_missing_data()
+    
+    #Step 4: Create the metadata file needed for the Kaggle upload
+    create_metadata_file()
