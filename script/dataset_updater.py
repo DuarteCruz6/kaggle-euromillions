@@ -12,7 +12,7 @@ METADATA_FILENAME = "dataset-metadata.json"
 DATASET_ID = "duartepereiradacruz/euromillions-historical-data"
 UPLOAD_DIR = "upload"
 
-def fetch_page(year: str) -> str:
+def fetch_page(year: int) -> str:
     """
     Fetches the page of the URL
     
@@ -22,7 +22,7 @@ def fetch_page(year: str) -> str:
     Returns:
         str: content of the response, in unicode
     """
-    resp = requests.get(URL+year)
+    resp = requests.get(URL+str(year))
     resp.raise_for_status()
     return resp.text
 
@@ -110,7 +110,12 @@ def check_and_append_missing_data():
     
     #drop the temporary 'date' column before merging
     df_missing = df_missing.drop(columns=['date'])
-    print(f"found {len(df_missing)} new draws")
+    
+    #print missing draws -> stays on github action's history
+    print(f"found {len(df_missing)} new draws:")
+    cols = ['num_1', 'num_2', 'num_3', 'num_4', 'num_5', 'star_1', 'star_2']
+    for _, draw in df_missing.iterrows():
+        print(*draw[cols].tolist())
     
     #append missing data to the existing DataFrame
     #the temporary 'date' column in df_missing.
@@ -147,7 +152,7 @@ if __name__ == "__main__":
     kaggle.api.dataset_download_files(DATASET_ID, UPLOAD_DIR, unzip=True)
     
     #Step 2: Download the latest draws from the EuroMillions official website
-    year = str(datetime.datetime.now().year)
+    year = datetime.datetime.now().year
     html = fetch_page(year)
     data = parse_results(html)
     save_to_csv(data)
