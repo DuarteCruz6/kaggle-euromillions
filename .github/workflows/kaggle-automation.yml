@@ -23,7 +23,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install kaggle==2.2.2 pandas numpy requests beautifulsoup4
+        run: pip install kagglesdk==0.1.30 kaggle==2.2.1 pandas numpy requests beautifulsoup4
 
       # --- 1. Run the Python script to prepare updated files and metadata ---
       - name: Scrape, Merge, and Prepare Data
