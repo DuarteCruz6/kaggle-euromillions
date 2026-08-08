@@ -17,12 +17,20 @@ def fetch_page(year: int) -> str:
     Fetches the page of the URL
     
     Args:
-        year (str): the year to append in the url
+        year (int): the year to append in the url
         
     Returns:
         str: content of the response, in unicode
     """
-    resp = requests.get(URL+str(year))
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Connection": "keep-alive"
+    }
+    
+    resp = requests.get(URL+str(year), headers=headers, timeout=20)
     resp.raise_for_status()
     return resp.text
 
