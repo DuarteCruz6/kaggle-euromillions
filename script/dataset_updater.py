@@ -66,16 +66,22 @@ def log_resolved_addresses(url: str) -> None:
     except OSError as e:
         print(f"could not resolve {host}: {e}")
 
+def set_skip_upload() -> None:
+    """
+    Tells the workflow to skip the Kaggle upload step
+    """
+    output = os.environ.get("GITHUB_OUTPUT")
+    if output:
+        with open(output, "a") as f:
+            f.write("skip_upload=true\n")
+
 def skip_upload(reason: str) -> None:
     """
     Emits a GitHub warning and tells the workflow to skip the Kaggle upload.
     Missing draws are picked up by the next successful run, since the whole year page is re-read.
     """
     print(f"::warning title=Scrape skipped::{reason}")
-    output = os.environ.get("GITHUB_OUTPUT")
-    if output:
-        with open(output, "a") as f:
-            f.write("skip_upload=true\n")
+    set_skip_upload()
     sys.exit(0)
 
 def parse_results(html: str) -> list:
@@ -136,9 +142,12 @@ def save_to_csv(data: list) -> None:
         for draw in data:
             writer.writerow(draw) 
         
-def check_and_append_missing_data():
+def check_and_append_missing_data() -> bool:
     """
     Fetch and append from euromillions_website.csv the missing data of euromillions.csv
+
+    Returns:
+        bool: True if new draws were appended, False if the dataset was already up to date
     """
     existing_file = UPLOAD_DIR + "/euromillions.csv"
     website_file = UPLOAD_DIR + "/euromillions_website.csv"
@@ -158,7 +167,7 @@ def check_and_append_missing_data():
     if df_missing.empty:
         #no missing data
         print("found no missing data")
-        return
+        return False
     
     #drop the temporary 'date' column before merging
     df_missing = df_missing.drop(columns=['date'])
@@ -176,6 +185,7 @@ def check_and_append_missing_data():
     #save the updated DataFrame back to the original file
     #ensure you are saving without the 'date' column and without the DataFrame index
     df_new.to_csv(existing_file, index=False)
+    return True
     
 def create_metadata_file():
     """
@@ -215,7 +225,7 @@ if __name__ == "__main__":
         save_to_csv(data)
     
     #Step 3: Check and append what is missing in the Kaggle dataset
-    check_and_append_missing_data()
+    has_new_draws = check_and_append_missing_data()
     
     # Clean-up
     website_file = UPLOAD_DIR+"/euromillions_website.csv"
@@ -223,5 +233,11 @@ if __name__ == "__main__":
         os.remove(website_file)
         print(f"Removed temporary file: {website_file}")
     
+    if not has_new_draws:
+        #nothing changed -> don't create an identical Kaggle version
+        print("dataset already up to date, skipping upload")
+        set_skip_upload()
+        sys.exit(0)
+
     #Step 4: Create the metadata file needed for the Kaggle upload
     create_metadata_file()
