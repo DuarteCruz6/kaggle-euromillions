@@ -29,6 +29,9 @@ jobs:
       - name: Scrape, Merge, and Prepare Data
         id: scrape
         run: python script/dataset_updater.py
+        env:
+          SCRAPE_PROXY_URL: ${{ secrets.SCRAPE_PROXY_URL }}
+          SCRAPE_PROXY_TOKEN: ${{ secrets.SCRAPE_PROXY_TOKEN }}
 
       # --- 2. Upload new version to Kaggle ---
       - name: Upload New Dataset Version to Kaggle

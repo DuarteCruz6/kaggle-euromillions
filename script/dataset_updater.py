@@ -34,6 +34,15 @@ def fetch_page(year: int) -> str:
         "Connection": "keep-alive"
     }
     
+    proxy_url = os.environ.get("SCRAPE_PROXY_URL")
+    proxy_token = os.environ.get("SCRAPE_PROXY_TOKEN")
+    if proxy_url and proxy_token:
+        #the site blocks GitHub runner IPs, so go through the Cloudflare Worker in proxy/
+        print(f"fetching {year} results via proxy")
+        resp = requests.get(proxy_url, params={"year": year}, headers={"X-Proxy-Token": proxy_token}, timeout=60)
+        resp.raise_for_status()
+        return resp.text
+
     url = URL + str(year)
     try:
         resp = requests.get(url, headers=headers, timeout=20)
