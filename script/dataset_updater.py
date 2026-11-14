@@ -6,6 +6,10 @@ import datetime
 import kaggle
 import pandas as pd
 import json
+import socket
+import sys
+
+import urllib3.util.connection
 
 URL = "https://www.euro-millions.com/results-history-"
 METADATA_FILENAME = "dataset-metadata.json"
@@ -30,9 +34,40 @@ def fetch_page(year: int) -> str:
         "Connection": "keep-alive"
     }
     
-    resp = requests.get(URL+str(year), headers=headers, timeout=20)
+    url = URL + str(year)
+    try:
+        resp = requests.get(url, headers=headers, timeout=20)
+    except requests.exceptions.ConnectionError as e:
+        #default route failed (possibly a broken IPv6 path on the runner) -> retry forcing IPv4
+        print(f"connection failed ({type(e).__name__}), retrying over IPv4 only")
+        log_resolved_addresses(url)
+        urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
+        resp = requests.get(url, headers=headers, timeout=20)
     resp.raise_for_status()
     return resp.text
+
+def log_resolved_addresses(url: str) -> None:
+    """
+    Prints the addresses the host resolves to, to help diagnose network-level blocks
+    """
+    host = url.split("/")[2]
+    try:
+        addrs = sorted({info[4][0] for info in socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)})
+        print(f"{host} resolves to: {', '.join(addrs)}")
+    except OSError as e:
+        print(f"could not resolve {host}: {e}")
+
+def skip_upload(reason: str) -> None:
+    """
+    Emits a GitHub warning and tells the workflow to skip the Kaggle upload.
+    Missing draws are picked up by the next successful run, since the whole year page is re-read.
+    """
+    print(f"::warning title=Scrape skipped::{reason}")
+    output = os.environ.get("GITHUB_OUTPUT")
+    if output:
+        with open(output, "a") as f:
+            f.write("skip_upload=true\n")
+    sys.exit(0)
 
 def parse_results(html: str) -> list:
     """
@@ -161,13 +196,12 @@ if __name__ == "__main__":
     
     #Step 2: Download the latest draws from the EuroMillions official website
     year = datetime.datetime.now().year
-    html = fetch_page(year)
-    data = parse_results(html)
-    save_to_csv(data)
-    
-    if datetime.datetime.now().month == 1:
-        #january might be an edge case
-        html = fetch_page(year-1)
+    years = [year-1, year] if datetime.datetime.now().month == 1 else [year] #january might be an edge case
+    for y in years:
+        try:
+            html = fetch_page(y)
+        except requests.exceptions.ConnectionError as e:
+            skip_upload(f"euro-millions.com unreachable from this runner ({type(e).__name__}); dataset not updated, next run will catch up")
         data = parse_results(html)
         save_to_csv(data)
     

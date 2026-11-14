@@ -27,10 +27,12 @@ jobs:
 
       # --- 1. Run the Python script to prepare updated files and metadata ---
       - name: Scrape, Merge, and Prepare Data
+        id: scrape
         run: python script/dataset_updater.py
 
       # --- 2. Upload new version to Kaggle ---
       - name: Upload New Dataset Version to Kaggle
+        if: steps.scrape.outputs.skip_upload != 'true'
         run: |
           # The script uses the 'upload' directory for all its files, including the metadata.json
           kaggle datasets version -p upload -m "Automated EuroMillions data update, runs on Tuesday and Friday. Check for draws up to $(date +'%Y-%m-%d')"
