@@ -1,7 +1,5 @@
 # Automated Kaggle EuroMillions Historical Data
 
-This repository automates the process of fetching, merging, and updating the EuroMillions historical data dataset on Kaggle. The process runs entirely within GitHub Actions, ensuring the dataset remains fresh without any manual intervention.
-
 This repository automates the process of fetching, merging, and updating Euromillions historical data from [Euromillion's official website](https://www.euro-millions.com/) to a [dataset on Kaggle](https://www.kaggle.com/datasets/duartepereiradacruz/euromillions-historical-data).  The process runs entirely within GitHub Actions, ensuring the dataset remains fresh without any manual intervention.
 
 ## What It Does and Why
@@ -17,15 +15,15 @@ The core automation is handled by a GitHub Actions workflow that executes the da
 
 ## Schedule
 The update process runs automatically Twice a Week to ensure timely data ingestion:
-- Every Tuesday at 23:00 PM UTC
-- Every Friday at 23:00 PM UTC
+- Every Tuesday at 23:00 UTC
+- Every Friday at 23:00 UTC
 
 The workflow can also be triggered manually via the "workflow_dispatch" button in the GitHub Actions tab.
 
 ## Technology Stack
 - Python: The core scripting language.
 - Libraries: requests and beautifulsoup4 for web scraping, pandas for data merging and manipulation, and kaggle for API interaction.
-- Automation: GitHub Actions.
+- Automation: GitHub Actions, with a Cloudflare Worker proxy for scraping.
 
 ## Setup and Configuration (For Contributors)
 To run this automation, you must configure your Kaggle credentials securely within your GitHub repository.
@@ -42,11 +40,31 @@ In your GitHub repository, go to Settings > Security > Secrets and variables > A
 
 The workflow will use these secrets to authenticate and update the dataset on Kaggle.
 
+### Scraping Proxy (Cloudflare Worker)
+euro-millions.com blocks GitHub-hosted runner IPs, so the workflow fetches the results pages through a small Cloudflare Worker in [`proxy/`](proxy/). The Worker only serves `results-history-<year>` pages and requires a shared token.
+
+Deploy it once (requires a free Cloudflare account):
+```bash
+cd proxy
+npx wrangler login
+npx wrangler deploy
+TOKEN=$(openssl rand -hex 32)
+echo "$TOKEN" | npx wrangler secret put PROXY_TOKEN
+echo "$TOKEN"
+```
+
+Then add two more repository secrets:
+- SCRAPE_PROXY_URL: the `https://<name>.<subdomain>.workers.dev` URL printed by `wrangler deploy`.
+- SCRAPE_PROXY_TOKEN: the token printed above (run `unset TOKEN` afterwards).
+
+If these secrets are not set, the script connects to the site directly. If the site cannot be reached, the run ends with a "Scrape skipped" warning and no upload; the next successful run picks up every missed draw, since it re-reads the whole year's results page.
+
 ## Ignored Files
 The large .csv files generated and downloaded during the update process are intentionally kept out of Git history via the .gitignore file:
-upload/
+- upload/
+- .wrangler/ (Wrangler's local cache for the proxy)
 
 This keeps the repository lightweight, as the data itself is version-controlled by Kaggle.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
